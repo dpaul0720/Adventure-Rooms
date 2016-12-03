@@ -1,0 +1,54 @@
+What your program is meant to do, from the user's perspective.
+Our program is meant to do, from the user’s perspective to display a 
+controllable game. The user can control the character with the WASD keys 
+and press ‘q’ to quit the program at any time. The user is first 
+presented with a tutorial page that tells them what to do and directs 
+them to start the game. Then the user proceeds onto the multiple rooms 
+in which they have to dodge obstacles that get progressively difficult. 
+The user can also pick up an item that gives them armor that works like 
+a shield. When the user enters the last room, he/she is congratulated 
+then is given a way to exit the game.
+
+How the program is structured, from the programmer's perspective. If 
+there is an algorithm involved, give the pseudo-code for the algorithm.
+The program is structured into multiple functions to represent different 
+parts of the game. We created a struct for our hero to keep track of 
+it’s attributes and we also created a few global variables that were 
+necessary to keep track of a few overlying variables. Inside the int 
+main, we create the hero and define its attributes by calling the 
+makehero function. We then use a while loop to animate the game. In it 
+we call the drawroom function to draw each room (6 rooms) that we have 
+depending on what room the hero currently is in and also call the 
+drawhero function which draws the hero. We have a gfx_event_wait so that 
+for a button that is pressed (w,a,s,d) the hero will do something in 
+return from the movehero function and ‘q’ will quit the program. 
+Additionally, because we have animations, we did the incrementations in 
+the main within an if statement for specific rooms. Each object that was 
+animated has a set speed so that each time the program is run, it stays 
+constant. For each one of these animations, we did a collision check 
+with the walls and the hero inside their respective functions so that if 
+the hero came in contact with any of the objects, the program would 
+either quit or reset the hero position depending whether or not the hero 
+had any armour. We did this by having the functions that checked 
+collisions return 0 or 1 depending whether or not our hero was hit and 
+within main, we would check if the hero was dead or not and quit the 
+game. For the armour, we had a attribute for our hero called herostatus 
+that would indicate whether armour was picked up or not. This would then 
+increment or do nothing to the attribute called lives to tell the 
+program if the hero has another life(aka armour). At the end of int main 
+we checked if the hero made it to the end of the game by checking the 
+variable win, and if it did, the program would close. 
+
+How you evaluated the program for correctness. Did you verify that it 
+produces correct results? If so, give examples. Are there any cases 
+where it produces incorrect results? If so, explain why and give an 
+example.
+We evaluated the program for correctness by testing every single “room” 
+of our game individually until they all worked together. In our first 
+obstacle room with the moving balls, we made the speed zero and tested 
+all the collisions on the ball with the character to make sure the 
+player actually died. We did the same for the moving blocks and the 
+rotating wall (made up of a bunch of smaller circles). As for the armour 
+pickup and use, we tested it with the other rooms to make sure the 
+respawn worked regardless of what obstacle it hit and that the color 
+changed appropriately. 

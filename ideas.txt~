@@ -1,0 +1,28 @@
+Binding of Issac style room game
+
+possibly 7ish rooms
+
+1st room
+Tutorial page with direction on the screen where the only thing you can do is move the character around
+
+2nd room
+Basically a bunch of smaller bounce.c programs in which the player has to avoid the balls and make it to the door.
+
+3rd room
+A laser room. Just code spokes without a circle and make collision.
+
+4th room
+Pick up a gun(item) and Text appears showing how to use the gun
+
+5th room
+Small enemies that you NEED to kill before moving to the next room.(Just copy and paste room 2 but without an exit)
+
+6th room
+Bigger enemies taht split into 2 smaller enemies when killed( just copy and paste room 2)
+
+7th room
+BOSS ROOM. The boss would copy the movement of bouncing balls. The boss will occasionally shoot projectiles in all directions. 
+
+
+
+

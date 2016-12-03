@@ -1,0 +1,431 @@
+//Joseph Yoon jyoon2@nd.edu
+//must be written in the c language
+//must compile and run correctly on the linux machines in the cse20211 lab
+//must be sensibly divided up into multiple functions
+//must require the use of arrays, strings, and pointers somewhere
+	//or linked lists
+//must be twice the complexity of a normal lab
+//must be ready to fully explain your program to the instructor or to a TA
+
+//ASTEROIDS
+	//first create spaceship and movement with keys
+		//max acceleration and max velocity
+		//goes through walls
+
+#include <stdio.h>
+#include <math.h>
+#include "gfx3.h"
+#include <stdlib.h>
+#include <time.h>
+#include <unistd.h>
+
+#define WIDTH 800
+#define HEIGHT 800
+
+typedef struct ship{
+	double x[3];
+	double y[3];
+	double vel;
+	double acc;
+	double dir;
+	double size;
+	double xC;
+	double yC;
+}ship;
+
+typedef struct bullets{
+	double x;
+	double y;
+	double dir;
+	double rad;
+	struct bullets *next;
+}bullet;
+typedef bullet *BulletPtr;
+
+typedef struct enemies{
+	double x;
+	double y;
+	double dir;
+	double rad;
+	struct enemies *next;
+}enemy;
+typedef enemy *EnemyPtr;
+
+ship p1;
+int score;
+int lives = 3;
+
+void makeShip();
+void shipDraw();
+void shipTurn(int);
+void shipMove();
+void makeBullet(BulletPtr *bPtr);
+void shootBullet(BulletPtr *bPtr);
+void makeEnemy(EnemyPtr *ePtr);
+void enemiesMove(EnemyPtr *ePtr);
+void bulletEnemyCollide(BulletPtr *bPtr, EnemyPtr *ePtr);
+int didBECollide(BulletPtr *bPtr, EnemyPtr *ePtr);
+void enemyBulletCollide(BulletPtr *bPtr, EnemyPtr *ePtr);
+void makeSmaller(EnemyPtr *tempPtr, EnemyPtr *ePtr);
+int shipCrash(EnemyPtr *ePtr);
+void scoreText();
+
+int main(){
+	BulletPtr head = NULL;
+	EnemyPtr eP = NULL;
+	char c = -1;
+	clock_t t;
+	t = clock();
+	srand(time(NULL));
+	int deltat = 3000;
+	int speed = 16;
+	makeShip();
+	shipMove();
+	gfx_open(WIDTH, HEIGHT, "Final Project: Easy Asteroids");
+	while(1){
+		switch(c){
+			case 'q':
+				return;
+			case 32: //space key
+				makeBullet(&head);
+				break;				
+			case 108: //l-key
+				shipTurn(0); //turn right
+				break;
+			case 106: //j-key
+				shipTurn(1); //turn left
+				break;
+			case 105: //i-key
+				if((p1.yC) - (p1.size*sqrt(3)/3) > speed && (p1.yC) + (p1.size*sqrt(3)/3) < HEIGHT-speed && p1.xC - (p1.size*sqrt(3)/3) > speed && (p1.xC + p1.size*sqrt(3)/3) < (WIDTH-speed) ){ 
+				p1.xC = speed*cos(p1.dir)+p1.xC;
+				p1.yC = p1.yC - speed*sin(p1.dir);
+				}
+				break;
+			case 107: //k-key
+				if((p1.yC) - (p1.size*sqrt(3)/3) > speed && (p1.yC) + (p1.size*sqrt(3)/3) < HEIGHT-speed && p1.xC - (p1.size*sqrt(3)/3) > speed && (p1.xC + p1.size*sqrt(3)/3) < (WIDTH-speed)){
+				p1.xC = -speed*cos(p1.dir)+p1.xC;
+				p1.yC = p1.yC + speed*sin(p1.dir);
+				}
+				break;
+			default:
+				break;
+			}
+		gfx_clear();
+		shipMove();
+		enemyBulletCollide(&head, &eP);
+		if((clock()-t)*100/CLOCKS_PER_SEC > 4){
+			t = clock();
+			makeEnemy(&eP);
+		}
+		shootBullet(&head);
+		shipDraw();
+		scoreText();
+		if(shipCrash(&eP)){
+			lives--;
+			eP = NULL;
+			head = NULL;
+			p1.xC = WIDTH/2;
+			p1.yC = HEIGHT/2;
+		}
+		if(lives <= 0)
+			break;
+		enemiesMove(&eP);
+		gfx_flush();
+		usleep(deltat);
+		c = -1;
+		if(gfx_event_waiting()){
+			c = gfx_wait();
+		}
+	}
+	gfx_clear();
+	char str[99];
+	sprintf(str, "Thanks for playing. Your score was: %d. This window will close.", score);
+	gfx_text(WIDTH/3, HEIGHT/2, str);
+	gfx_flush();
+	usleep(10000000);
+	return 0;
+}
+
+void scoreText(){
+char str[99];
+char dir[99];
+sprintf(str, "Score: %d Lives: %d", score, lives);
+sprintf(dir, "I-UP K-DOWN J-TURN LEFT L-TURN RIGHT SPACE-SHOOT Q-QUIT");
+gfx_text(10, 20, str);
+gfx_text(10, 50, dir);
+
+}
+
+int shipCrash(EnemyPtr *ePtr){
+	EnemyPtr current;
+	current = *ePtr;
+	double v1, v2, v3;
+	while(current){
+		v1 = (pow(current->x-p1.x[0], 2) + pow(current->y-p1.y[0], 2) - pow(current->rad, 2));
+		v2 = (pow(current->x-p1.x[1], 2) + pow(current->y-p1.y[1], 2) - pow(current->rad, 2));
+		v3 = (pow(current->x-p1.x[2], 2) + pow(current->y-p1.y[2], 2) - pow(current->rad, 2));
+		if(v1 <= 0 || v2 <= 0 || v3 <= 0)
+			return 1;
+		current = current->next;
+	}
+return 0;
+}
+int didBECollide(BulletPtr *bPtr, EnemyPtr *ePtr){
+	double r = 0;
+	if(*bPtr != NULL && *ePtr != NULL){
+	if((*bPtr)->x <= (*ePtr)->x && (*bPtr)->y <= (*ePtr)->y){
+		r = sqrt(pow(((*ePtr)->x - (*bPtr)->x), 2) + pow(((*ePtr)->y - (*bPtr)->y), 2));
+	 	if(r <= ((*ePtr)->rad+(*bPtr)->rad))
+			return 1;
+	}
+	if((*bPtr)->x >= (*ePtr)->x && (*bPtr)->y <= (*ePtr)->y){
+		r = sqrt(pow(((*bPtr)->x - (*ePtr)->x), 2) + pow(((*ePtr)->y - (*bPtr)->y), 2));
+		if(r <= ((*ePtr)->rad+(*bPtr)->rad))
+			return 1;
+	}
+	if((*bPtr)->x <= (*ePtr)->x && (*bPtr)->y >= (*ePtr)->y){
+		r = sqrt(pow(((*ePtr)->x - (*bPtr)->x), 2) + pow(((*bPtr)->y - (*ePtr)->y), 2));
+		if(r <= ((*ePtr)->rad+(*bPtr)->rad))
+			return 1;
+	}
+	if((*bPtr)->x >= (*ePtr)->x && (*bPtr)->y >= (*ePtr)->y){
+		r = sqrt(pow(((*bPtr)->x - (*ePtr)->x), 2) + pow(((*bPtr)->y - (*ePtr)->y), 2));
+		if(r <= ((*ePtr)->rad+(*bPtr)->rad))
+			return 1;
+	}
+	}
+return 0;
+}
+	
+void makeSmaller(EnemyPtr *tempPtr, EnemyPtr *ePtr){
+	EnemyPtr one, two;
+
+	double newRad = (*tempPtr)->rad/2;
+	if(newRad > 10){
+		one = malloc(sizeof(enemy));
+		two = malloc(sizeof(enemy));
+		one->next = *ePtr;
+		two->next = one;
+		one->rad = newRad;
+		two->rad = newRad;
+		one->dir = (*tempPtr)->dir +(rand()%45+45)*(M_PI/180);
+		two->dir = (*tempPtr)->dir -(rand()%45+45)*(M_PI/180);
+		one->x = cos(one->dir)*(newRad+(*tempPtr)->rad)+(*tempPtr)->x;
+		two->x = cos(two->dir)*(newRad+(*tempPtr)->rad)+(*tempPtr)->x;
+		one->y = (*tempPtr)->y - sin(one->dir)*(newRad+(*tempPtr)->rad);
+		two->y = (*tempPtr)->y - sin(two->dir)*(newRad+(*tempPtr)->rad);
+		*ePtr = two;
+	}
+}
+
+void enemyBulletCollide(BulletPtr *bPtr, EnemyPtr *ePtr){
+	EnemyPtr ePrevPtr, eCurPtr, eTemPtr;
+	BulletPtr bPrevPtr, bCurPtr, bTemPtr;
+	ePrevPtr = NULL;
+	bPrevPtr = NULL;
+	eCurPtr = *ePtr;
+	bCurPtr = *bPtr;
+	
+	while(eCurPtr != NULL){
+		while(bCurPtr != NULL){
+			if(didBECollide(&bCurPtr, &eCurPtr)){
+				if(bPrevPtr == NULL){
+					bTemPtr = bCurPtr;
+					*bPtr = bCurPtr->next;
+					free(bTemPtr);
+				}
+				else{
+					bTemPtr = bCurPtr;
+					bPrevPtr->next = bCurPtr->next;
+					bCurPtr = bCurPtr->next;
+					free(bTemPtr);
+				}
+				if(ePrevPtr == NULL){
+					eTemPtr = eCurPtr;
+					*ePtr = eCurPtr->next;
+					makeSmaller(&eTemPtr, ePtr);
+					score = score + 120/eTemPtr->rad;
+					free(eTemPtr);
+				}
+				else{
+					eTemPtr = eCurPtr;
+					ePrevPtr->next = eCurPtr->next;
+					eCurPtr = eCurPtr->next;
+					score = score + 120/eTemPtr->rad;
+					makeSmaller(&eTemPtr, ePtr);
+					free(eTemPtr);
+				}
+				break;
+			}
+			else{
+				bPrevPtr = bCurPtr;
+				bCurPtr = bCurPtr->next;
+			}
+		}
+		if(eCurPtr){
+			ePrevPtr = eCurPtr;
+			eCurPtr = eCurPtr->next;
+			bCurPtr = *bPtr;
+			bPrevPtr = NULL;
+		}
+	}
+
+}
+
+void enemiesMove(EnemyPtr *ePtr){
+	EnemyPtr previousPtr, currentPtr, tempPtr;
+	previousPtr = NULL;
+	currentPtr = NULL;
+	tempPtr = NULL;
+	if(*ePtr != NULL){
+		if((*ePtr)->x-(*ePtr)->rad > WIDTH || (*ePtr)->x+(*ePtr)->rad < 0 || (*ePtr)->y-(*ePtr)->rad>HEIGHT || (*ePtr)->y+(*ePtr)->rad < 0){
+			tempPtr = *ePtr;
+			*ePtr = (*ePtr)->next;
+			free(tempPtr);
+		}
+		else{
+			gfx_color(rand()%255, rand()%255, rand()%255);
+			gfx_circle((*ePtr)->x, (*ePtr)->y, (*ePtr)->rad);
+			(*ePtr)->x = cos((*ePtr)->dir)/6+(*ePtr)->x;
+			(*ePtr)->y = (*ePtr)->y-sin((*ePtr)->dir)/6;
+			previousPtr = *ePtr;
+			currentPtr = (*ePtr)->next;
+			while(currentPtr !=NULL && (currentPtr->x > -1*currentPtr->rad) && (currentPtr->x-currentPtr->rad < WIDTH) && (currentPtr->y > -1*currentPtr->rad) && (currentPtr->y - currentPtr->rad < HEIGHT)){
+				gfx_circle(currentPtr->x, currentPtr->y, currentPtr->rad);
+				currentPtr->x = cos(currentPtr->dir)/6 + currentPtr->x;
+				currentPtr->y = currentPtr->y - sin(currentPtr->dir)/6;
+				previousPtr = currentPtr;
+				currentPtr = currentPtr->next;
+			}
+			if(currentPtr !=NULL){
+				tempPtr = currentPtr;
+				previousPtr->next = currentPtr->next;
+				free(tempPtr);
+			}
+			gfx_color(255, 255, 255);
+		}
+	}	
+}
+
+void makeEnemy(EnemyPtr *ePtr){
+	int side = rand()%4;
+	int radius = rand()%100+20;
+	int loc = rand()%(800-radius*2)+radius;
+	double deg = rand()%90;
+	EnemyPtr newPtr;
+	newPtr = malloc(sizeof(enemy));
+	newPtr->rad = radius;
+	newPtr->next = *ePtr;
+
+	if(side == 0){ //approach from left side
+		newPtr->x = -1*radius;
+		newPtr->y = loc;
+		if(loc > HEIGHT/2)
+			newPtr->dir = (deg*M_PI/180);
+		else
+			newPtr->dir = -(deg*M_PI/180);
+	} else if(side == 1){ //approach from top
+		newPtr->y = -1*radius;
+		newPtr->x = loc;
+		if(loc > WIDTH/2)
+			newPtr->dir = (deg*M_PI/180)+(M_PI);
+		else
+			newPtr->dir = (deg*M_PI/180)-(M_PI/2);
+	} else if(side == 2){ //approach from right
+		newPtr->x = WIDTH + radius;
+		newPtr->y = loc;
+		if(loc > HEIGHT/2)
+			newPtr->dir = (deg*M_PI/180)+(M_PI/2);
+		else
+			newPtr->dir = (deg*M_PI/180)+(M_PI);
+	} else if(side == 3){ //approach from bottom
+		newPtr->y = HEIGHT + radius;
+		newPtr->x = loc;
+		if(loc > WIDTH/2)
+			newPtr->dir = (deg*M_PI/180)+(M_PI/2);
+		else
+			newPtr->dir = (deg*M_PI/180);
+	} 
+	*ePtr = newPtr;
+}
+
+void shootBullet(BulletPtr *bPtr){
+	BulletPtr currentPtr, previousPtr, tempPtr;
+	gfx_color(255, 255, 0);
+	if(*bPtr)
+	if((*bPtr)->x > WIDTH || (*bPtr)->x < 0 || (*bPtr)->y > HEIGHT || (*bPtr)->y < 0){
+		tempPtr = *bPtr;
+		*bPtr =(*bPtr)->next;
+		free(tempPtr); 
+	}
+	else{
+		gfx_circle((*bPtr)->x, (*bPtr)->y, (*bPtr)->rad);
+		(*bPtr)->x = cos((*bPtr)->dir)+(*bPtr)->x;
+		(*bPtr)->y = (*bPtr)->y - sin((*bPtr)->dir);
+		previousPtr = *bPtr;
+		currentPtr = (*bPtr)->next;
+		while(currentPtr){
+			if(currentPtr->x < WIDTH && currentPtr->x > 0 && currentPtr->y > 0 && currentPtr->y<HEIGHT){
+				gfx_circle(currentPtr->x, currentPtr->y, currentPtr->rad);
+				currentPtr->x = cos(currentPtr->dir)+currentPtr->x;
+				currentPtr->y = currentPtr->y - sin(currentPtr->dir);
+				previousPtr = currentPtr;
+				currentPtr = currentPtr->next;
+			}
+			else{
+				tempPtr = currentPtr;	
+				previousPtr->next = currentPtr->next;
+				free(tempPtr);
+				return;
+			}
+		}
+	}
+	gfx_color(255, 255, 255);
+}
+
+void makeBullet(BulletPtr *bPtr){
+	BulletPtr newPtr;
+	double R = p1.size*sqrt(3)/3;
+	newPtr = malloc(sizeof(bullet));
+	newPtr->rad = 5;
+	newPtr->x = R*cos(p1.dir)+p1.xC;
+	newPtr->y = p1.yC - R*sin(p1.dir);
+	newPtr->dir = p1.dir;
+	newPtr->next = *bPtr;
+	*bPtr = newPtr;
+}
+
+void makeShip(){
+	p1.size = 50;
+	p1.dir = M_PI/2;
+	p1.vel = 0;
+	p1.acc = 0;
+	p1.xC = WIDTH/2;
+	p1.yC = HEIGHT/2;
+}
+
+void shipDraw(){
+	gfx_color(255, 0, 0);
+	gfx_triangle(p1.x[0], p1.y[0], p1.x[1], p1.y[1], p1.x[2], p1.y[2]);
+	gfx_color(255, 255, 255);
+}
+
+void shipMove(){
+//R = a*sqrt(3)/3
+	double R = p1.size*sqrt(3)/3;
+	p1.x[0] = R*cos(p1.dir)+p1.xC;
+	p1.y[0] = p1.yC - R*sin(p1.dir);
+	p1.x[1] = R*cos(p1.dir+M_PI*2/3) + p1.xC;
+	p1.y[1] = p1.yC - R*sin(p1.dir+M_PI*2/3);
+	p1.x[2] = R*cos(p1.dir-M_PI*2/3) + p1.xC;
+	p1.y[2] = p1.yC - R*sin(p1.dir-M_PI*2/3);
+}
+
+void shipTurn(int dir){
+	if(dir == 1){ //left
+		p1.dir = p1.dir +(M_PI/20);
+	}
+	if(dir == 0){ //right
+		p1.dir = p1.dir - (M_PI/20);
+	}
+}

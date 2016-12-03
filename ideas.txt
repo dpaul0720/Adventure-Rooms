@@ -1,0 +1,27 @@
+Binding of Issac style room game
+
+possibly 7ish rooms
+
+1st room
+Tutorial page with direction on the screen where the only thing you can do is move the character around
+
+2nd room
+Player has to avoid the randomly flying objects and make it to the door.
+
+3rd room
+A laser room. Just code spokes without a circle and make collision.
+
+4th room
+Pick up a gun(item) and Text appears showing how to use the gun
+
+5th room
+Small enemies that you NEED to kill before moving to the next room.(
+
+6th room
+Bigger enemies taht split into 2 smaller enemies when killed
+7th room
+BOSS ROOM. The boss move around randomly. The boss will occasionally shoot projectiles in all directions. 
+
+
+
+
